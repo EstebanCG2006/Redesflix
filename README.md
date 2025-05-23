@@ -14,7 +14,7 @@ Este proyecto se construyó con una variedad de herramientas y tecnologías mode
 | 📡 **Docker Swarm** | Orquestación de contenedores en múltiples nodos. |
 | 🌐 **HTML + Bootstrap** | Frontend estático para interacción de usuario con los microservicios. |
 | 🛠️ **Apache2**      | Servidor web usado en entornos de desarrollo. |
-| 🐙 **Git & GitHub** | Control de versiones y repositorio remoto del proyecto. |
+| 🐈‍⬛ **Git & GitHub** | Control de versiones y repositorio remoto del proyecto. |
 | 📦 **Vagrant**      | Automatización del entorno de desarrollo con máquinas virtuales (cliente y servidor Ubuntu). |
 | ⚡ **Apache Spark** (opcional) | Análisis distribuido de datos para consultas complejas y estadísticas. |
 
