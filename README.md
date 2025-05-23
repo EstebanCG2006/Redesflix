@@ -1,7 +1,7 @@
 ## Redesflix
 
 
-## 🛠️ Tecnologías Utilizadas
+## 🐳 Tecnologías Utilizadas
 
 Este proyecto se construyó con una variedad de herramientas y tecnologías modernas que permiten un desarrollo modular, escalable y fácil de desplegar:
 
