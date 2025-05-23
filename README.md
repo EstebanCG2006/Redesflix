@@ -89,7 +89,7 @@ exit
 ```bash
 http://192.168.100.3:8088/
 ```
-
+Importante al momento de colocar la tarjeta solo acepta 10 digitos y que termine en 90
 --------------
 ## ⚡Redesflix - Aplicación de Análisis con PySpark (Dockerizado)
 
