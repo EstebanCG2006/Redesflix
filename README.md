@@ -166,7 +166,7 @@ Luego revisa la carpeta `resultados/` que se habrá creado en tu VM.
 
 ---
 
-##Análisis realizados
+ Análisis realizados
 
 - Top 5 películas más vistas
 - Top 5 películas menos vistas
