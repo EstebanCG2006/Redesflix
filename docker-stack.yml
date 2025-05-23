@@ -1,0 +1,113 @@
+version: "3.8"
+
+services:
+  # 🔹 Base de datos general MySQL
+  mysql:
+    image: esteban9215/mysql-custom:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: Gomez92150@
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "3307:3306"
+
+  # 🔹 Microservicio Usuarios
+  usuarios:
+    image: esteban9215/redesflix-usuarios:latest
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: Gomez92150@
+      DB_NAME: u_movies
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "3002:3002"
+
+  # 🔹 Microservicio Catálogo
+  catalogo:
+    image: esteban9215/redesflix-catalogo:latest
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: Gomez92150@
+      DB_NAME: movies_db
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "3001:3001"
+
+  # 🔹 Microservicio Suscripciones
+  suscripcion:
+    image: esteban9215/redesflix-suscripcion:latest
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: Gomez92150@
+      DB_NAME: suscripciones_db
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "3004:3004"
+
+  # 🔹 Microservicio Historial
+  historial:
+    image: esteban9215/redesflix-historial:latest
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: Gomez92150@
+      DB_NAME: historial_db2
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "3006:3006"
+
+  # 🔹 Frontend
+  frontend:
+    image: esteban9215/redesflix-frontend:latest
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - redesflix_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - "8088:80"
+
+volumes:
+  mysql_data:
+
+networks:
+  redesflix_net:
+    driver: overlay

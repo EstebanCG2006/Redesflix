@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>RedesFlix - Tu streaming a un clic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 60px; }
+    /* Se ocultan inicialmente la vista de catálogo (para usuarios) y la vista admin */
+    #catalogoSection, #adminSection { display: none; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">RedesFlix</a>
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <!-- Botones de autenticación para usuarios -->
+        <ul class="navbar-nav ms-auto" id="authButtons">
+          <li class="nav-item me-2">
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#loginModal">Iniciar Sesión</button>
+          </li>
+          <li class="nav-item">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerModal">Registrarse</button>
+          </li>
+        </ul>
+        <!-- Botón para admin (visible solo para administradores) -->
+        <ul class="navbar-nav ms-auto" id="adminButton" style="display: none;">
+          <li class="nav-item">
+            <button class="btn btn-warning" onclick="showAdminSection()">Administrar</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sección de Catálogo para usuarios -->
+  <section id="catalogoSection" class="container my-4">
+    <h2 class="mb-3">Catálogo de Películas y Series</h2>
+    <!-- Aquí irían los filtros y la presentación del contenido -->
+    <div class="row" id="catalogoContainer"></div>
+  </section>
+
+  <!-- Sección Admin: Gestión de suscripciones y contenidos -->
+  <section id="adminSection" class="container my-4">
+    <h2 class="mb-3">Administración</h2>
+    <!-- Contenido de administración (suscripciones, catálogo, etc.) -->
+    <div id="pendingSubscriptions"></div>
+    <div id="adminCatalogo"></div>
+    <button class="btn btn-secondary mt-2" onclick="hideAdminSection()">Ocultar Administración</button>
+  </section>
+
+  <!-- Modal Login (usando email y contraseña) -->
+  <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="loginModalLabel">Iniciar Sesión</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="loginForm">
+            <div class="mb-3">
+              <label for="loginEmail" class="form-label">Correo electrónico</label>
+              <input type="email" class="form-control" id="loginEmail" required>
+            </div>
+            <div class="mb-3">
+              <label for="loginPassword" class="form-label">Contraseña</label>
+              <input type="password" class="form-control" id="loginPassword" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registro (ejemplo básico, sin el campo "usuario") -->
+  <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="registerModalLabel">Registrarse</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="registerForm">
+            <div class="mb-3">
+              <label for="regNombre" class="form-label">Nombre</label>
+              <input type="text" class="form-control" id="regNombre" required>
+            </div>
+            <div class="mb-3">
+              <label for="regEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="regEmail" required>
+            </div>
+            <div class="mb-3">
+              <label for="regPassword" class="form-label">Contraseña</label>
+              <input type="password" class="form-control" id="regPassword" required>
+            </div>
+            <div class="mb-3">
+              <label for="regTipo" class="form-label">Tipo</label>
+              <select class="form-select" id="regTipo" required>
+                <option value="usuario">Usuario</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="regMetodoPago" class="form-label">Método de Pago (debito/credito)</label>
+              <input type="text" class="form-control" id="regMetodoPago" required>
+            </div>
+            <div class="mb-3">
+              <label for="regNumeroTarjeta" class="form-label">Número de Tarjeta</label>
+              <input type="text" class="form-control" id="regNumeroTarjeta" required>
+            </div>
+            <div class="mb-3">
+              <label for="regCvc" class="form-label">CVC</label>
+              <input type="text" class="form-control" id="regCvc" required>
+            </div>
+            <div class="mb-3">
+              <label for="regFechaExp" class="form-label">Fecha de Expiración (MMYY)</label>
+              <input type="text" class="form-control" id="regFechaExp" required>
+            </div>
+            <button type="submit" class="btn btn-success">Registrarse</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts: jQuery, Bootstrap Bundle y script personalizado -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // URL base de usuarios (ajusta el puerto si es necesario)
+    const BASE_USERS_URL = 'http://192.168.100.3:3002/api/usuarios';
+
+    // Variable global para almacenar el usuario actual
+    let currentUser = null;
+
+    $('#loginForm').submit(function(e) {
+  e.preventDefault();
+  const email = $('#loginEmail').val().trim();
+  const password = $('#loginPassword').val().trim();
+
+  $.ajax({
+    url: `${BASE_USERS_URL}/login`,
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ email, password }),
+    success: function(response) {
+      // Se espera que la respuesta tenga { mensaje, usuario }
+      const usuario = response.usuario;
+      if (!usuario) {
+        alert('Error: respuesta incorrecta del servidor');
+        return;
+      }
+      
+      // Se asigna el usuario actual
+      currentUser = usuario;
+      alert('Bienvenido ' + currentUser.nombre);
+      
+      // Si se tiene la propiedad "rol", se usa para mostrar secciones
+      // Asegúrate de que coincida con lo que devuelves (rol o tipo)
+      if (currentUser.rol && currentUser.rol === 'admin') {
+        $('#catalogoSection').hide();
+        $('#adminSection').show();
+        $('#adminButton').show();
+      } else {
+        $('#catalogoSection').show();
+      }
+      
+      $('#authButtons').hide();
+    },
+    error: function(xhr) {
+      if (xhr.status === 401) {
+        alert('Credenciales inválidas');
+      } else {
+        alert('Error al iniciar sesión: ' + xhr.responseText);
+      }
+    }
+  });
+});
+
+
+      // Registro (ejemplo básico, similar a lo que ya tienes)
+      $('#registerForm').submit(function(e) {
+        e.preventDefault();
+        const nombre = $('#regNombre').val().trim();
+        const email = $('#regEmail').val().trim();
+        const password = $('#regPassword').val();
+        const tipo = $('#regTipo').val();
+        const metodo_pago = $('#regMetodoPago').val().trim().toLowerCase();
+        const numero_tarjeta = $('#regNumeroTarjeta').val().trim();
+        const cvc = $('#regCvc').val().trim();
+        const fecha_expiracion = $('#regFechaExp').val().trim();
+
+        if (!nombre || !email || password.length < 4) {
+          alert('Verifica que todos los campos estén completos y la contraseña tenga al menos 4 caracteres');
+          return;
+        }
+
+        $.ajax({
+          url: `${BASE_USERS_URL}`,
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ nombre, email, password, tipo, metodo_pago, tarjeta_numero: numero_tarjeta, tarjeta_vencimiento: fecha_expiracion, tarjeta_cvv: cvc, membresia: 'básica' }),
+          success: function(response) {
+            alert('Usuario registrado exitosamente');
+            $('#registerModal').modal('hide');
+          },
+          error: function(xhr) {
+            alert('Error al registrar usuario: ' + xhr.responseText);
+          }
+        });
+      });
+
+    // Funciones para mostrar/ocultar secciones (ejemplo)
+    function showAdminSection() { $('#adminSection').show(); }
+    function hideAdminSection() { $('#adminSection').hide(); }
+  </script>
+</body>
+</html>

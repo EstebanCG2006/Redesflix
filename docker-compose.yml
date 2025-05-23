@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Gomez92150@
+      MYSQL_DATABASE: u_movies
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - front_net
+    ports:
+      - "3307:3306"
+
+  catalogo:
+    image: esteban9215/redesflix-catalogo:latest
+    ports:
+      - "3001:3001"
+    networks:
+      - front_net
+    depends_on:
+      - mysql
+
+  usuarios:
+    image: esteban9215/redesflix-usuarios:latest
+    ports:
+      - "3002:3002"
+    networks:
+      - front_net
+    depends_on:
+      - mysql
+
+  suscripcion:
+    image: esteban9215/redesflix-suscripcion:latest
+    ports:
+      - "3004:3004"
+    networks:
+      - front_net
+    depends_on:
+      - mysql
+
+  historial:
+    image: esteban9215/redesflix-historial:latest
+    ports:
+      - "3006:3006"
+    networks:
+      - front_net
+    depends_on:
+      - mysql
+
+  frontend:
+    image: nginx:alpine
+    container_name: frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "8088:80"
+    networks:
+      - front_net
+
+volumes:
+  mysql_data:
+
+networks:
+  front_net:
+    external: true
+    
