@@ -38,14 +38,14 @@ En la terminal de tu servidor Ubuntu, ejecuta:
 ```bash
 git clone https://github.com/EstebanCG2006/Redesflix.git
 cd Redesflix
-
+```
 ## 🐳 Inicializar Docker Swarm y desplegar el stack
 
 ```bash
 docker swarm init
 # Agrega el  worker con el token que se genera en la otra máquina 
 docker stack deploy -c docker-stack.yml redesflix
-
+```
 ##3. Preparar bases de datos
 Para que los microservicios funcionen, es necesario importar las bases de datos MySQL.
 
@@ -55,39 +55,39 @@ En el nodo worker (o en tu entorno compartido):
 ```bash
 mkdir Database
 cp Database/* /vagrant/Database/
-
+```
 ```bash
 docker cp /vagrant/Databases/movies_db.sql <contenedor_mysql>:/tmp/movies_db.sql
 docker cp /vagrant/Databases/u_movies.sql <contenedor_mysql>:/tmp/u_movies.sql
 docker cp /vagrant/Databases/suscripciones_db.sql <contenedor_mysql>:/tmp/suscripciones_db.sql
 docker cp /vagrant/Databases/historial_db2.sql <contenedor_mysql>:/tmp/historial_db2.sql
-
+```
 Importar las bases de datos dentro del contenedor
 
 ```bash
 docker exec -it <contenedor_mysql> bash
-
+```
 ```bash
 mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS movies_db"
 mysql -uroot -pGomez92150@ movies_db < /tmp/movies_db.sql
-
+```
 ```bash
 mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS u_movies"
 mysql -uroot -pGomez92150@ u_movies < /tmp/u_movies.sql
-
+```
 ```bash
 mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS suscripciones_db"
 mysql -uroot -pGomez92150@ suscripciones_db < /tmp/suscripciones_db.sql
-
+```
 ```bash
 mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS historial_db2"
 mysql -uroot -pGomez92150@ historial_db2 < /tmp/historial_db2.sql
 exit
-
+```
 ##🌐 Acceder a la plataforma
 ```bash
 http://192.168.100.3:8088/
-
+```
 
 
 
