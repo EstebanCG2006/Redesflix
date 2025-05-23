@@ -90,16 +90,12 @@ http://192.168.100.3:8088/
 ```
 
 --------------
-Redesflix - Aplicación de Análisis con PySpark (Dockerizado)
-
-Este proyecto contiene una aplicación de análisis de datos tipo Netflix usando **Apache Spark** y empaquetada en **Docker**. Analiza visualizaciones por película y por membresía.
+## ⚡Redesflix - Aplicación de Análisis con PySpark (Dockerizado)
 
 ---
 
  Requisitos
 
-- Una máquina virtual (VM) con Linux (Ubuntu recomendado)
-- Docker instalado y funcionando (`sudo docker version`)
 - Archivo `redesflix_spark_app.zip` ya descargado
 
 ---
