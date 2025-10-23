@@ -1,7 +1,3 @@
-Here’s a **README.md** you can drop into your repo. Está escrito como documento serio (sin comentarios ni coloquialismos), con diagramas Mermaid y referencias sólidas.
-
----
-
 # Proyecto ETL — Agua, Alcantarillado y Aseo (Colombia)
 
 > **Entrega 2** — Integración de prestadores (histórico + API) y calidad del agua en un **modelo dimensional** con validación automática y orquestación en **Apache Airflow**.
