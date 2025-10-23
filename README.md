@@ -1,4 +1,5 @@
-## 🖥️📱💳📺 Redesflix
+## Redesflix 🖥️📱💳📺 
+
 Es una plataforma web basada en microservicios orientada a la visualización de contenido audiovisual segmentado por tipo de membresía. Este proyecto presenta el desarrollo y despliegue
 
 
