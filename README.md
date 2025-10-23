@@ -1,252 +1,183 @@
-# Proyecto ETL — Agua, Alcantarillado y Aseo (Colombia)
+## 🖥️📱💳📺 Redesflix
+Es una plataforma web basada en microservicios orientada a la visualización de contenido audiovisual segmentado por tipo de membresía. Este proyecto presenta el desarrollo y despliegue
 
-**Entrega 2 — Orquestación con Apache Airflow y Modelo Dimensional**
 
-**Stack:** 🐍 Python · 🐘 PostgreSQL · 🐳 Docker/Compose · 🪁 Apache Airflow · 📈 BI (Superset/Metabase/Power BI)
+## 🐳 Tecnologías Utilizadas
 
----
+Este proyecto se construyó con una variedad de herramientas y tecnologías modernas que permiten un desarrollo modular, escalable y fácil de desplegar:
 
-## Visión general
+| 🐳 Tecnología       | 🔎 Descripción |
+|--------------------|----------------|
+| 🟢 **Node.js**      | Backend para los microservicios: `usuarios`, `catálogo`, `historial`, `suscripciones`. |
+| 🐬 **MySQL**        | Base de datos relacional para cada microservicio (4 bases independientes). |
+| 🐳 **Docker**       | Contenedores para cada microservicio, frontend y base de datos. |
+| 📦 **Dockerfile**   | Scripts para construir imágenes personalizadas de frontend y MySQL preconfigurada. |
+| 📡 **Docker Swarm** | Orquestación de contenedores en múltiples nodos. |
+| 🌐 **HTML + Bootstrap** | Frontend estático para interacción de usuario con los microservicios. |
+| 🛠️ **Apache2**      | Servidor web usado en entornos de desarrollo. |
+| 🐈‍⬛ **Git & GitHub** | Control de versiones y repositorio remoto del proyecto. |
+| 📦 **Vagrant**      | Automatización del entorno de desarrollo con máquinas virtuales (cliente y servidor Ubuntu). |
+| ⚡ **Apache Spark** (opcional) | Análisis distribuido de datos para consultas complejas y estadísticas. |
 
-Implementamos un pipeline **ETL** que integra tres fuentes heterogéneas (CSV histórico de prestadores, API de prestadores y CSV de calidad del agua), estandariza y valida los datos, y publica tres **dimensiones conformes** al grano **Departamento–Municipio** (y `provider_id` en la dimensión de prestadores). El diseño sigue **modelado dimensional (Kimball)**, lo que permite consultas en **esquema estrella** y *drill-across* entre dominios (prestación ↔ calidad) usando dimensiones compartidas. ([Kimball Group][1])
+> Todas estas tecnologías fueron integradas para desarrollar **Redesflix**, un sistema completo de streaming con arquitectura de microservicios.
 
-La orquestación se realiza con **Apache Airflow**, declarando dependencias, reintentos y programación como código (**DAGs**). ([Apache Airflow][2])
 
----
 
-## Arquitectura y flujo
+## Requisitos previos
 
-> **Cómo leer los diagramas:** en GitHub, Mermaid debe ir dentro de un bloque con ```mermaid y cada flecha en su propia línea (el render es estricto). ([GitHub Docs][3])
+- Tener Docker instalado en la máquina Ubuntu.
+- Docker Swarm inicializado o nodo unido a un swarm.
+- Acceso a internet para descargar imágenes desde Docker Hub.
 
-```mermaid
-flowchart LR
-  subgraph Fuentes
-    S1["stg_old\nCSV histórico"]
-    S2["stg_api\nAPI prestadores"]
-    S3["stg_new\nCSV calidad"]
-  end
 
-  subgraph Procesamiento
-    E[Extract]
-    T[Transform]
-    M[Merge]
-    V[Validación]
-  end
+## Pasos para instalar y ejecutar
 
-  subgraph Data_Warehouse
-    C1[(clean_staging)]
-    C2[(clean_calidad)]
-    D1[(dim_prestadores)]
-    D2[(dim_calidad_geo)]
-    D3[(dim_prestacion_geo)]
-  end
+### 1. Clonar el repositorio
 
-  S1 --> E
-  S2 --> E
-  S3 --> E
-  E --> T
-  T --> M
-  M --> C1
-  M --> C2
-  C1 --> V
-  C2 --> V
-  V --> D1
-  V --> D2
-  V --> D3
-```
-
----
-
-## Datasets y transformaciones
-
-### 1) Prestadores (`stg_old` + `stg_api` → `clean_staging`)
-
-* **Normalización**: mayúsculas, *trim* y eliminación de tildes.
-* **Clave**: `provider_id = COALESCE(nit, md5(UPPER(nombre)|dep|mun|servicio))`.
-* **Servicio**: mapeo a `{ACUEDUCTO, ALCANTARILLADO, ASEO}`; cualquier valor fuera del dominio se etiqueta como `DESCONOCIDO` para mantener consistencia aguas abajo.
-* **Estado**: consolidación a `{OPERATIVA, SUSPENDIDA, OTRO}` (imputación por moda cuando aplica).
-* **Contacto**: `direccion`, `telefono`, `email` preservados si los trae `stg_old` (nulos para `stg_api`).
-* **Deduplicación**: `(provider_id, servicio, departamento, municipio)`.
-
-**Salida**
-`clean_staging(provider_id, nombre, departamento, municipio, servicio, estado, clasificacion, direccion, telefono, email)`.
-
-### 2) Calidad del agua (`stg_new` → `clean_calidad`)
-
-* **Fecha**: *parse* robusto a `fecha_muestra`.
-* **Valor**: limpieza de símbolos y *cast* a `double precision`.
-* **Coordenadas**: validación para **Colombia** (lat ∈ [−5, 15], lon ∈ [−82, −66]); si falta una, ambas a `NULL`.
-* **Plausibilidad**:
-
-  * **pH** ∈ [0, 14].
-  * **Cloro residual**: plausibilidad 0–5 mg/L; como guía operativa, mantener **residuales de unas décimas de mg/L** en la red, con ≥ **0.5 mg/L** tras ≥ **30 min** de contacto a pH < 8 y ≥ **0.2 mg/L** en el punto de entrega (estos umbrales se usan como KPI, no para descartar filas). ([NCBI][4])
-* **Unicidad**: `(departamento, municipio, parametro, fecha_muestra, nombre_punto)`.
-
-**Salida**
-`clean_calidad(departamento, municipio, parametro, valor, fecha_muestra, unidad, nombre_punto, latitud, longitud)`.
-
----
-
-## Modelo dimensional (estrella)
-
-Publicamos tres dimensiones con claves primarias **departamento** + **municipio** (y **provider_id** en prestadores). El uso de **dimensiones conformes** alinea ejes analíticos entre procesos distintos y habilita *drill-across* seguro. ([Kimball Group][1])
-
-```mermaid
-erDiagram
-  DIM_PRESTADORES {
-    text departamento PK
-    text municipio   PK
-    text provider_id PK
-    text nombre
-    text servicio
-    text estado
-    text clasificacion
-    text direccion
-    text telefono
-    text email
-  }
-  DIM_PRESTACION_GEO {
-    text departamento PK
-    text municipio   PK
-    int  total_prestadores
-    int  acueducto_total
-    int  alcantarillado_total
-    int  aseo_total
-    int  operativos_total
-    int  suspendidos_total
-  }
-  DIM_CALIDAD_GEO {
-    text departamento PK
-    text municipio   PK
-    int  puntos_monitoreo
-    int  mediciones
-    int  parametros_distintos
-    text estado_ph
-    text estado_cloro
-    date fecha_ult_muestra
-  }
-```
-
-> Si en el futuro agregas **hechos** (p. ej., mediciones diarias o eventos operativos), mantén las dimensiones conformes para que las comparaciones entre *facts* sigan la regla de **drill-across**. ([Kimball Group][5])
-
----
-
-## Orquestación (DAG de Airflow)
-
-Orden de ejecución en producción:
-
-```
-extract_old, extract_new, extract_api
-  → transform
-  → merge_clean_sql
-  → validate
-  → build_dim_prestadores, build_dim_calidad, build_dim_prestacion
-```
-
-Airflow modela flujos como **DAGs**: colecciones de tareas con dependencias y programación, gestionando reintentos, *logging* y visualización. ([Apache Airflow][2])
-
-```mermaid
-flowchart LR
-  EX1[extract_old] --> TR[transform]
-  EX2[extract_new] --> TR
-  EX3[extract_api] --> TR
-  TR --> MG[merge_clean_sql]
-  MG --> VA[validate]
-  VA --> B1[build_dim_prestadores]
-  VA --> B2[build_dim_calidad]
-  VA --> B3[build_dim_prestacion]
-```
-
----
-
-## Validación de datos
-
-La validación corre como tarea y **frena el DAG** ante fallas críticas, alineada con las **seis dimensiones de calidad** (exactitud, completitud, consistencia, unicidad, validez y vigencia) recomendadas por DAMA. ([Apache Airflow][6])
-
-**Críticos (bloquean):**
-
-* Nulos en llaves (`clean_staging`: provider_id/departamento/municipio/servicio; `clean_calidad`: departamento/municipio/parametro/fecha_muestra).
-* Duplicados por llaves lógicas.
-* Fechas fuera de rango; lat/lon fuera de Colombia o despareadas.
-* Plausibilidad (pH y cloro) fuera de los límites definidos.
-
-**Informativos (no bloquean):**
-
-* % de `DESCONOCIDO` en `servicio` por encima del umbral.
-* E-mails y teléfonos con formato dudoso.
-* Colisiones municipio–día–parámetro para revisión.
-
----
-
-## KPIs y visualizaciones sugeridas
-
-* **Prestación**: total de prestadores por municipio/servicio; % operativos vs. suspendidos.
-* **Calidad**: *semáforos* por municipio para pH y cloro; # de puntos y mediciones; fecha de última muestra.
-* **Cobertura**: municipios sin mediciones en el período analizado.
-
-> Los tableros (Superset/Metabase/Power BI) deben consumir **`dim_*`**; las claves geográficas compartidas garantizan comparabilidad entre dominios mediante **dimensiones conformes**. ([Kimball Group][1])
-
----
-
-## Ejecución local (Docker/Compose)
-
-1. **Levantar servicios**
+En la terminal de tu servidor Ubuntu, ejecuta:
 
 ```bash
-docker compose up -d
+git clone https://github.com/EstebanCG2006/Redesflix.git
+cd Redesflix
 ```
-
-2. **Disparar el DAG**
-
-* UI: `http://localhost:8080`
-* CLI:
+## 🐳 Inicializar Docker Swarm y desplegar el stack
 
 ```bash
-docker compose exec scheduler airflow dags trigger etl
+docker swarm init
+# Agrega el  worker con el token que se genera en la otra máquina 
+docker stack deploy -c docker-stack.yml redesflix
+```
+## 3. Preparar bases de datos
+Para que los microservicios funcionen, es necesario importar las bases de datos MySQL.
+
+3.1 Crear carpeta compartida para las bases de datos
+En el nodo worker (o en tu entorno compartido):
+
+```bash
+mkdir Database
+cp Database/* /vagrant/Database/
+```
+```bash
+docker cp /vagrant/Databases/movies_db.sql <contenedor_mysql>:/tmp/movies_db.sql
+docker cp /vagrant/Databases/u_movies.sql <contenedor_mysql>:/tmp/u_movies.sql
+docker cp /vagrant/Databases/suscripciones_db.sql <contenedor_mysql>:/tmp/suscripciones_db.sql
+docker cp /vagrant/Databases/historial_db2.sql <contenedor_mysql>:/tmp/historial_db2.sql
+```
+## Importar las bases de datos dentro del contenedor
+
+```bash
+docker exec -it <contenedor_mysql> bash
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS movies_db"
+mysql -uroot -pGomez92150@ movies_db < /tmp/movies_db.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS u_movies"
+mysql -uroot -pGomez92150@ u_movies < /tmp/u_movies.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS suscripciones_db"
+mysql -uroot -pGomez92150@ suscripciones_db < /tmp/suscripciones_db.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS historial_db2"
+mysql -uroot -pGomez92150@ historial_db2 < /tmp/historial_db2.sql
+exit
+```
+## 🌐 Acceder a la plataforma
+```bash
+http://192.168.100.3:8088/
+```
+Importante al momento de colocar la tarjeta solo acepta 10 digitos y que termine en 90
+--------------
+## ⚡Redesflix - Aplicación de Análisis con PySpark (Dockerizado)
+
+---
+
+ Requisitos
+
+- Archivo `redesflix_spark_app.zip` ya descargado
+
+---
+
+Pasos para poner en marcha la aplicación
+
+ 1. Mover el archivo ZIP a la máquina virtual
+
+Puedes usar `scp` o copiarlo por medio de carpetas compartidas:
+
+```bash
+scp redesflix_spark_app.zip usuario@192.168.X.X:/home/usuario/
 ```
 
-3. **Consultas rápidas (PostgreSQL)**
+O simplemente pegarlo si tienes la VM montada con carpetas sincronizadas.
 
-```sql
--- Conteos base
-SELECT COUNT(*) FROM clean_staging;
-SELECT COUNT(*) FROM clean_calidad;
+---
 
--- Catálogo de servicio final
-SELECT servicio, COUNT(*) FROM clean_staging GROUP BY 1 ORDER BY 2 DESC;
+### 2. Descomprimir el archivo
 
--- Duplicados lógicos (esperado: 0)
-SELECT COUNT(*) FROM (
-  SELECT provider_id, servicio, departamento, municipio, COUNT(*) c
-  FROM clean_staging
-  GROUP BY 1,2,3,4 HAVING COUNT(*)>1
-) t;
+```bash
+unzip redesflix_spark_app.zip
+cd redesflix_spark_app
+```
+
+Esto creará la estructura:
+
+```
+.
+├── analisis_spark.py
+├── Dockerfile
+├── dataset/
+│   └── movies_analytics.csv
+└── README.md
 ```
 
 ---
 
-## Notas sobre Mermaid en GitHub
+ 3. Construir la imagen de Docker
 
-* Usa bloques con ```mermaid y **una flecha por línea**.
-* Los títulos de `subgraph` deben ser simples (evita caracteres que rompan el parser).
-  Documentación oficial: GitHub + Mermaid OSS. ([GitHub Docs][3])
+```bash
+docker build -t redesflix-analisis .
+```
 
----
-
-## Referencias
-
-* **Kimball Group** — *Dimensional Modeling Techniques: Drilling Across* (dimensiones conformes y *drill-across*). ([Kimball Group][1])
-* **Apache Airflow** — Conceptos y DAGs (documentación oficial). ([Apache Airflow][2])
-* **GitHub** — Crear diagramas Mermaid en Markdown. ([GitHub Docs][3])
-* **Mermaid** — Sintaxis básica de *flowcharts* (referencia OSS). ([docs.mermaidchart.com][7])
-* **OMS/WHO** — Recomendación operativa de cloro residual (≥0.5 mg/L tras ≥30 min, ≥0.2 mg/L en entrega). ([NCBI][4])
+Esto crea una imagen llamada `redesflix-analisis` con Spark y tu script PySpark.
 
 ---
 
-[1]: https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/drilling-across/?utm_source=chatgpt.com "Drilling Across - Dimensional Modeling Techniques"
-[2]: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html?utm_source=chatgpt.com "Dags — Airflow 3.1.0 Documentation"
-[3]: https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams?utm_source=chatgpt.com "Creating Mermaid diagrams"
-[4]: https://www.ncbi.nlm.nih.gov/books/NBK579467/table/ch8.tab17/?utm_source=chatgpt.com "Table 8.17, Guideline values for chemicals used in water ..."
-[5]: https://www.kimballgroup.com/2003/04/the-soul-of-the-data-warehouse-part-two-drilling-across/?utm_source=chatgpt.com "The Soul of the Data Warehouse, Part 2: Drilling Across"
-[6]: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/index.html?utm_source=chatgpt.com "Core Concepts — Airflow 3.1.0 Documentation"
-[7]: https://docs.mermaidchart.com/mermaid-oss/syntax/flowchart.html?utm_source=chatgpt.com "Mermaid FlowChart Basic Syntax"
+ 4. Ejecutar la aplicación
+
+```bash
+docker run --rm redesflix-analisis
+```
+
+Esto ejecutará el análisis sobre el dataset. Los resultados se generan en `resultados/peliculas/` dentro del contenedor.
+
+---
+
+ 5. Ver los resultados
+
+Para obtener los archivos generados fuera del contenedor, ejecuta el contenedor con volumen montado:
+
+```bash
+docker run --rm -v "$PWD/resultados:/app/resultados" redesflix-analisis
+```
+
+Luego revisa la carpeta `resultados/` que se habrá creado en tu VM.
+
+---
+
+ Análisis realizados
+
+- Top 5 películas más vistas
+- Top 5 películas menos vistas
+- Top 5 películas más vistas por membresía:
+  - Básico
+  - Estándar
+  - Premium
+
+---
+
+¡Y listo! Ya puedes usar esta base para escalar, generar dashboards o integrarlo a pruebas con JMeter.
+
+
