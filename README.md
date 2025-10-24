@@ -1,144 +1,184 @@
-flowchart LR
-  %% Cluster de extracción
-  subgraph Extract
-    EX_OLD[extract_old<br/>CSV historico -> stg_old]
-    EX_API[extract_api<br/>API prestadores -> stg_api]
-    EX_NEW[extract_new<br/>CSV calidad -> stg_new]
-  end
+## Redesflix 🖥️📱💳📺 
 
-  %% Transform + Merge + Validate
-  T[transform<br/>clean_* (prestadores/calidad)]
-  M[merge_clean_sql<br/>consolidacion prestadores]
-  V[validate<br/>DQ Quickcheck]
-
-  %% Nueva dimension geo + dimensiones existentes
-  G[build_dim_geo<br/>(dim_geo)]
-  D1[build_dim_prestadores<br/>(dim_prestadores)]
-  D2[build_dim_prestacion<br/>(dim_prestacion_geo)]
-  D3[build_dim_calidad<br/>(dim_calidad_geo)]
-  FK[add_geo_fks<br/>FKs a dim_geo (NOT VALID + VALIDATE)]
-
-  EX_OLD --> T
-  EX_API --> T
-  EX_NEW --> T
-  T --> M --> V --> G
-  G --> D1 --> FK
-  G --> D2 --> FK
-  G --> D3 --> FK
+Es una plataforma web basada en microservicios orientada a la visualización de contenido audiovisual segmentado por tipo de membresía. Este proyecto presenta el desarrollo y despliegue
 
 
-erDiagram
-  %% Dimension central geografica
-  DIM_GEO {
-    TEXT departamento PK
-    TEXT municipio PK
-  }
+## 🐳 Tecnologías Utilizadas
 
-  %% Dimensiones conectadas a la geo (snowflake)
-  DIM_PRESTADORES {
-    TEXT departamento
-    TEXT municipio
-    TEXT provider_id PK
-    TEXT nombre
-    TEXT servicio
-    TEXT estado
-    TEXT clasificacion
-    TEXT direccion
-    TEXT telefono
-    TEXT email
-  }
+Este proyecto se construyó con una variedad de herramientas y tecnologías modernas que permiten un desarrollo modular, escalable y fácil de desplegar:
 
-  DIM_PRESTACION_GEO {
-    TEXT departamento
-    TEXT municipio
-    INT  total_prestadores
-    INT  acueducto_total
-    INT  alcantarillado_total
-    INT  aseo_total
-    INT  operativos_total
-    INT  suspendidos_total
-  }
+| 🐳 Tecnología       | 🔎 Descripción |
+|--------------------|----------------|
+| 🟢 **Node.js**      | Backend para los microservicios: `usuarios`, `catálogo`, `historial`, `suscripciones`. |
+| 🐬 **MySQL**        | Base de datos relacional para cada microservicio (4 bases independientes). |
+| 🐳 **Docker**       | Contenedores para cada microservicio, frontend y base de datos. |
+| 📦 **Dockerfile**   | Scripts para construir imágenes personalizadas de frontend y MySQL preconfigurada. |
+| 📡 **Docker Swarm** | Orquestación de contenedores en múltiples nodos. |
+| 🌐 **HTML + Bootstrap** | Frontend estático para interacción de usuario con los microservicios. |
+| 🛠️ **Apache2**      | Servidor web usado en entornos de desarrollo. |
+| 🐈‍⬛ **Git & GitHub** | Control de versiones y repositorio remoto del proyecto. |
+| 📦 **Vagrant**      | Automatización del entorno de desarrollo con máquinas virtuales (cliente y servidor Ubuntu). |
+| ⚡ **Apache Spark** (opcional) | Análisis distribuido de datos para consultas complejas y estadísticas. |
 
-  DIM_CALIDAD_GEO {
-    TEXT departamento
-    TEXT municipio
-    INT  puntos_monitoreo
-    INT  mediciones
-    INT  parametros_distintos
-    TEXT estado_ph
-    TEXT estado_cloro
-    DATE fecha_ult_muestra
-  }
-
-  %% Relaciones snowflake (1:N por geo)
-  DIM_GEO ||--o{ DIM_PRESTADORES    : "dep,mun"
-  DIM_GEO ||--o{ DIM_PRESTACION_GEO : "dep,mun"
-  DIM_GEO ||--o{ DIM_CALIDAD_GEO    : "dep,mun"
+> Todas estas tecnologías fueron integradas para desarrollar **Redesflix**, un sistema completo de streaming con arquitectura de microservicios.
 
 
 
-flowchart TD
-  %% Fuentes
-  subgraph Sources
-    S1[CSV Historico<br/>Prestadores]
-    S2[API Prestadores]
-    S3[CSV Calidad del Agua]
-  end
+## Requisitos previos
 
-  %% Orquestacion Airflow
-  subgraph Airflow
-    A1[extract_old]
-    A2[extract_api]
-    A3[extract_new]
-    A4[transform<br/>(clean_staging, clean_calidad)]
-    A5[merge_clean_sql]
-    A6[validate<br/>DQ Quickcheck]
-    A7[build_dim_geo]
-    A8[build_dim_prestadores]
-    A9[build_dim_prestacion]
-    A10[build_dim_calidad]
-    A11[add_geo_fks]
-  end
+- Tener Docker instalado en la máquina Ubuntu.
+- Docker Swarm inicializado o nodo unido a un swarm.
+- Acceso a internet para descargar imágenes desde Docker Hub.
 
-  %% Almacenamiento y Consumo
-  subgraph Warehouse (PostgreSQL)
-    W1[(stg_old)]
-    W2[(stg_api)]
-    W3[(stg_new)]
-    W4[(clean_staging)]
-    W5[(clean_calidad)]
-    W6[(dim_geo)]
-    W7[(dim_prestadores)]
-    W8[(dim_prestacion_geo)]
-    W9[(dim_calidad_geo)]
-  end
 
-  subgraph BI
-    B1[Power BI / Dashboards<br/>KPIs]
-  end
+## Pasos para instalar y ejecutar
 
-  %% Flujo de datos
-  S1 --> A1 --> W1
-  S2 --> A2 --> W2
-  S3 --> A3 --> W3
+### 1. Clonar el repositorio
 
-  W1 --> A4
-  W2 --> A4
-  W3 --> A4
-  A4 --> W4
-  A4 --> W5
-  A5 --> W4
-  A6 --> W4
-  A6 --> W5
+En la terminal de tu servidor Ubuntu, ejecuta:
 
-  A7 --> W6
-  A8 --> W7
-  A9 --> W8
-  A10 --> W9
-  A11 --> W7
-  A11 --> W8
-  A11 --> W9
+```bash
+git clone https://github.com/EstebanCG2006/Redesflix.git
+cd Redesflix
+```
+## 🐳 Inicializar Docker Swarm y desplegar el stack
 
-  W7 --> B1
-  W8 --> B1
-  W9 --> B1
+```bash
+docker swarm init
+# Agrega el  worker con el token que se genera en la otra máquina 
+docker stack deploy -c docker-stack.yml redesflix
+```
+## 3. Preparar bases de datos
+Para que los microservicios funcionen, es necesario importar las bases de datos MySQL.
+
+3.1 Crear carpeta compartida para las bases de datos
+En el nodo worker (o en tu entorno compartido):
+
+```bash
+mkdir Database
+cp Database/* /vagrant/Database/
+```
+```bash
+docker cp /vagrant/Databases/movies_db.sql <contenedor_mysql>:/tmp/movies_db.sql
+docker cp /vagrant/Databases/u_movies.sql <contenedor_mysql>:/tmp/u_movies.sql
+docker cp /vagrant/Databases/suscripciones_db.sql <contenedor_mysql>:/tmp/suscripciones_db.sql
+docker cp /vagrant/Databases/historial_db2.sql <contenedor_mysql>:/tmp/historial_db2.sql
+```
+## Importar las bases de datos dentro del contenedor
+
+```bash
+docker exec -it <contenedor_mysql> bash
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS movies_db"
+mysql -uroot -pGomez92150@ movies_db < /tmp/movies_db.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS u_movies"
+mysql -uroot -pGomez92150@ u_movies < /tmp/u_movies.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS suscripciones_db"
+mysql -uroot -pGomez92150@ suscripciones_db < /tmp/suscripciones_db.sql
+```
+```bash
+mysql -uroot -pGomez92150@ -e "CREATE DATABASE IF NOT EXISTS historial_db2"
+mysql -uroot -pGomez92150@ historial_db2 < /tmp/historial_db2.sql
+exit
+```
+## 🌐 Acceder a la plataforma
+```bash
+http://192.168.100.3:8088/
+```
+Importante al momento de colocar la tarjeta solo acepta 10 digitos y que termine en 90
+--------------
+## ⚡Redesflix - Aplicación de Análisis con PySpark (Dockerizado)
+
+---
+
+ Requisitos
+
+- Archivo `redesflix_spark_app.zip` ya descargado
+
+---
+
+Pasos para poner en marcha la aplicación
+
+ 1. Mover el archivo ZIP a la máquina virtual
+
+Puedes usar `scp` o copiarlo por medio de carpetas compartidas:
+
+```bash
+scp redesflix_spark_app.zip usuario@192.168.X.X:/home/usuario/
+```
+
+O simplemente pegarlo si tienes la VM montada con carpetas sincronizadas.
+
+---
+
+### 2. Descomprimir el archivo
+
+```bash
+unzip redesflix_spark_app.zip
+cd redesflix_spark_app
+```
+
+Esto creará la estructura:
+
+```
+.
+├── analisis_spark.py
+├── Dockerfile
+├── dataset/
+│   └── movies_analytics.csv
+└── README.md
+```
+
+---
+
+ 3. Construir la imagen de Docker
+
+```bash
+docker build -t redesflix-analisis .
+```
+
+Esto crea una imagen llamada `redesflix-analisis` con Spark y tu script PySpark.
+
+---
+
+ 4. Ejecutar la aplicación
+
+```bash
+docker run --rm redesflix-analisis
+```
+
+Esto ejecutará el análisis sobre el dataset. Los resultados se generan en `resultados/peliculas/` dentro del contenedor.
+
+---
+
+ 5. Ver los resultados
+
+Para obtener los archivos generados fuera del contenedor, ejecuta el contenedor con volumen montado:
+
+```bash
+docker run --rm -v "$PWD/resultados:/app/resultados" redesflix-analisis
+```
+
+Luego revisa la carpeta `resultados/` que se habrá creado en tu VM.
+
+---
+
+ Análisis realizados
+
+- Top 5 películas más vistas
+- Top 5 películas menos vistas
+- Top 5 películas más vistas por membresía:
+  - Básico
+  - Estándar
+  - Premium
+
+---
+
+¡Y listo! Ya puedes usar esta base para escalar, generar dashboards o integrarlo a pruebas con JMeter.
+
+
